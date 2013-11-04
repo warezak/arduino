@@ -1,0 +1,72 @@
+/*
+  Brad Warezak
+  Nov 2 2013
+  Scroll characters across a 2 x 16 LCD screen
+  I had troubles with the built in scroll functions, so I create my own. This one will scroll the text from the 'bottom' string from left to right across the LCD screen. The 'top' sctring is fixed in this example.
+ */
+
+#include <Adafruit_CharacterOLED.h>
+
+Adafruit_CharacterOLED lcd(2, 3, 5, 6, 7, 8, 9);
+// OLED lcd is much better than traditional backlit lcd for scrolling text
+
+void setup() {
+  
+  // set up the LCD's number of columns and rows: 
+  Serial.begin(9600);
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("power on ... ");
+      
+} //end setup
+
+void loop() {
+   
+  int iLen = 0;
+  int iCount = 0;
+  String top = "Forbes Tech News";
+  String bottom  = "The iPad Air shows off Apple at its best http://t.co/0bnKqBU2sa"; // text to scroll
+  char row2[16];
+  char curChar;
+
+  // print row one (no scroll)
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(top);
+   
+  // set each position in 16 char array to a blank value    
+  for (int x = 0; x < 16; x++){
+        row2[x] = ' '; 
+  }
+  
+  // loop thru each character in the string
+  iLen = bottom.length();
+  while (iCount < iLen)  {
+     
+     curChar =  bottom.charAt(iCount);
+     
+     // move each character to the left one position
+     for (int y = 0; y < 16; y++){
+          row2[y] = row2[y+1]; 
+     }
+              
+     // set current character in the last position of array
+     row2[15] = curChar;
+     
+     // print the array       
+     for (int z = 16; z > 0; z--){
+        lcd.setCursor(z-1,1);
+        lcd.print(row2[z-1]);
+      }
+          
+      // delay before getting next char and screen print 
+      delay(200);
+      
+      iCount++;    
+  }
+            
+  delay(10000); 
+    
+} // end loop
+
