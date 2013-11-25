@@ -1,0 +1,252 @@
+/*
+  Brad R Warezak
+  Nov 24 2013
+  Connect to Web and scroll text on LCD using Arduino Ehternet
+  This script reads is in the following format:
+  
+  100
+  1Forbes Tech News
+  2Sugary drinks are linked to an increased risk of cancer in women
+  1TechCrunch
+  2Uber Strikes Deal To Lower The Cost Of Car Ownership For Drivers
+  
+  First row is the scrolling speed for the lcd bottom row, then each row is printing on the lcd, 1 on top, 2 scrolled on bottom
+ */
+
+#include <SPI.h>
+#include <Ethernet.h>
+#include <Adafruit_CharacterOLED.h>
+
+// OLED display works great for scrolling text
+Adafruit_CharacterOLED lcd(2, 3, 5, 6, 7, 8, 9);
+
+// MAC address for your controller.
+byte mac[] = { 0x90, 0xA2, 0xDA, 0x44, 0x44, 0x44 };
+
+// set the ip address of you webserver
+IPAddress server(50,87,146,151); 
+ 
+// Initialize the Ethernet client library
+EthernetClient client;
+
+// loop counters for debugging
+int iLoop = 0;
+int iFail = 0;
+int connectLoop;
+
+void setup() {
+  
+  Serial.begin(9600);
+  delay(5000); //per suggestions at stackoverflow.com/questions/12327238/arduino-ethernet-shield-client-connect-returns-error-code-5
+  Serial.println("power on ...");
+  // set up the LCD's number of columns and rows: 
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("power on ... ");
+
+  // start the Ethernet connection:
+  connect_ip();
+      
+} //end setup
+
+void loop() {
+   
+ // lcd.clear();
+  char curChar;
+  char prevChar;
+  char row2[16];
+  static char input[16];
+  static uint8_t i;
+  int iFirst = 0; // use for first row
+  int delay_number;
+  int iPos1 = 0;
+  int iPos2 = 0;
+  int iRow = 0;
+  int iSkip = 0;
+ 
+  // display the number of times thru the loop
+  Serial.print("Loading - ");
+  Serial.println(iLoop);
+ 
+  // connect to server
+  if (!client.connected()) {
+     client.connect(server, 80);
+     delay(3000);
+  }
+  
+  // get webpage
+  if (client.connected()) {  
+     get_html();
+  } 
+    
+  // if not connected 2x's ina row, then retry connection
+  if (!client.connected()) {
+     if (iFail > 2) {
+         Serial.println("connect failed 2x, try to reconnect ip"); 
+         lcd.clear();
+         lcd.setCursor(0,0);
+         lcd.print("Error connecting");
+              
+         client.stop();
+         delay(5000);
+         
+         connect_ip();
+         client.connect(server, 80);
+         delay(3000);
+         if (client.connected()) { 
+           get_html();
+         }
+         
+         delay(5000);
+         iFail = 0;
+      }
+      iFail++;
+  } // end if connected
+   
+  // loop thru document and read characters
+  while(client.connected()) {
+  //   Serial.println("connected");
+          
+  while(client.available()) {
+  
+    prevChar = curChar;
+    curChar = client.read();
+    // Serial.print(curChar);
+          
+    // set connectLoop to zero if a packet arrives
+    connectLoop = 0;
+       
+    if (iFirst < 1) {
+        // first row is the delay value
+        input[i++] = curChar;
+     }
+         
+    if (prevChar == '\n') {
+       // the first line of the file has the delay speed, this is use to control the speed of the scrolling     
+       if (iFirst < 1) {
+            // convert char to int
+            delay_number = atoi( input );
+            Serial.print(F("delay="));
+            Serial.println(delay_number);
+        }
+        iFirst = 1;
+      
+        // line one setup, print from position 0, row 0
+        if (curChar == '1') {
+            delay(1000);
+            lcd.clear();
+            iPos1 = 0;
+            iRow = 0;
+            iSkip = 0;
+         } // end if line 1
+          
+         // line two setup, print from position 15 (scroll from right), row 1
+         if (curChar == '2') {
+            iPos2 = 15;
+            iRow = 1;
+            iSkip = 0;
+            // clear the array
+            for (int x = 0; x < 16; x++){
+                row2[x] = ' '; 
+            }
+         } //  end if line 2
+          
+      } // end if new line
+                
+      // print each char for top row
+      if (iRow < 1) {
+          // skip first line, contains delay value
+          if (iFirst > 0) {
+              if (iSkip > 0 ) {
+                  lcd.setCursor(iPos1,iRow);
+                  lcd.print(curChar);
+                  iPos1++;
+              }
+              iSkip = 1;
+          }
+      }
+     
+      // for bottom display row, put the char into an array, last position
+      if (iRow > 0) {
+        
+          // set array
+          if (iSkip > 0 ) {
+              // move each value in the array one step to the left
+              for (int y = 0; y < 16; y++){
+                  row2[y] = row2[y+1]; 
+              }
+           
+              row2[15] = curChar;
+          }
+          iSkip = 1;
+          
+          // print array - paint bottow row        
+          for (int z = 16; z > 0; z--){
+              lcd.setCursor(z-1,iRow);
+              lcd.print(row2[z-1]);
+          }
+             
+          // pause before scrolling text
+          delay(delay_number);
+         
+      }
+            
+      
+  } // end while available
+  
+   connectLoop++;
+   // if more than 10000 milliseconds since the last packet
+   if(connectLoop > 10000) {
+      // then close the connection from this end
+      Serial.println();
+      Serial.println(F("Timeout"));
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Timeout Error");
+      client.stop();
+      delay(5000);
+   }
+   // this is the delay for the connectLoop timing
+   delay(1);
+   
+  } // end while connected  
+  
+   iLoop++;
+   client.stop();       
+  
+} // end loop
+
+void get_html() {
+  
+   Serial.println("get html");
+  // lcd.clear();
+  // lcd.setCursor(0,0);
+  // lcd.print("Get html");
+   client.println("GET /~warezak/123ticker/feed.php?d=1" );
+   //client.println(); 
+   //client.println("Connection: close");
+    delay(3000);
+   
+} // end get html
+
+void connect_ip() {
+  
+  Ethernet.begin(mac);
+  Serial.println("Ethernet Connecting");
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Ethernet Connecting");
+  delay(1000);
+      
+  // print your local IP address:
+  Serial.print("IP address: ");
+  Serial.println(Ethernet.localIP());
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("IP address: ");
+  lcd.setCursor(0, 1);
+  lcd.print(Ethernet.localIP());
+  delay(1000);
+
+} // end connect ip
