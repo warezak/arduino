@@ -11,21 +11,28 @@
   2Uber Strikes Deal To Lower The Cost Of Car Ownership For Drivers
   
   First row is the scrolling speed for the lcd bottom row, then each row is printing on the lcd, 1 on top, 2 scrolled on bottom
+  
+  Dec 20 2013
+  Updated code to connect to 123Ticker.com (my webserver), rather than IP address
+  Added ability for others to connect to their twitter account thru 123ticker.com. Register at 123ticker.com, then replace the account key with the one assigned to you in get_html() below.
+
  */
 
 #include <SPI.h>
 #include <Ethernet.h>
 #include <Adafruit_CharacterOLED.h>
 
-// OLED display works great for scrolling text
+// OLED display works great for scrolling text, I got mine from adafruit.com
 Adafruit_CharacterOLED lcd(2, 3, 5, 6, 7, 8, 9);
 
 // MAC address for your controller.
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x44, 0x44, 0x44 };
 
 // set the ip address of you webserver
-IPAddress server(50,87,146,151); 
- 
+//IPAddress server(xx,xx,xxx,xxx); 
+// or set the dns address for your website
+char server[] = "www.123ticker.com"; 
+
 // Initialize the Ethernet client library
 EthernetClient client;
 
@@ -112,7 +119,7 @@ void loop() {
   
     prevChar = curChar;
     curChar = client.read();
-    // Serial.print(curChar);
+    Serial.print(curChar);
           
     // set connectLoop to zero if a packet arrives
     connectLoop = 0;
@@ -218,14 +225,12 @@ void loop() {
 } // end loop
 
 void get_html() {
-  
+ 
+   //if you register on 123Ticker.com, then replace 'iwAyNBWltllcxUWz' with your account key, and your personal twitter feed will display
+   // warezaktest = 'iwAyNBWltllcxUWz'
    Serial.println("get html");
-  // lcd.clear();
-  // lcd.setCursor(0,0);
-  // lcd.print("Get html");
-   client.println("GET /~warezak/123ticker/feed.php?d=1" );
-   //client.println(); 
-   //client.println("Connection: close");
+   client.println("GET /~warezak/123ticker/feed.php?d=iwAyNBWltllcxUWz" );
+   client.println(); 
     delay(3000);
    
 } // end get html
