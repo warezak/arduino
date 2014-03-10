@@ -226,10 +226,11 @@ void loop() {
 
 void get_html() {
  
-   //if you register on 123Ticker.com, then replace 'iwAyNBWltllcxUWz' with your account key, and your personal twitter feed will display
+   //if you register on 123Ticker.com, then replace 'iwAyNBWltllcxUWz' with your account key, and your personal twitter feed will display.
+   //your account key is displayed under My Account link after completing the registration
    // warezaktest = 'iwAyNBWltllcxUWz'
    Serial.println("get html");
-   client.println("GET /~warezak/123ticker/feed.php?d=iwAyNBWltllcxUWz" );
+   client.println("GET /~warezak/123ticker/feed.php?d=iwAyNBWltllcxUWz HTTP/1.0" );
    client.println(); 
     delay(3000);
    
